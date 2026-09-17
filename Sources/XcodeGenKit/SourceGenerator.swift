@@ -338,8 +338,7 @@ class SourceGenerator {
         mergingChildren children: [PBXFileElement],
         createIntermediateGroups: Bool,
         hasCustomParent: Bool,
-        isBaseGroup: Bool,
-        willBeMergedIntoParent: Bool = false
+        isBaseGroup: Bool
     ) -> PBXGroup {
         let groupReference: PBXGroup
 
@@ -371,7 +370,7 @@ class SourceGenerator {
             let isRootPath = (isBaseGroup && isOutOfBasePath && isParentOfBasePath) || path.parent() == project.basePath
 
             // is a top level group in the project
-            let isTopLevelGroup = !hasCustomParent && !willBeMergedIntoParent && ((isBaseGroup && !createIntermediateGroups) || isRootPath || isParentOfBasePath)
+            let isTopLevelGroup = !hasCustomParent && ((isBaseGroup && !createIntermediateGroups) || isRootPath || isParentOfBasePath)
 
             let groupName = name ?? path.lastComponent
 
@@ -686,15 +685,12 @@ class SourceGenerator {
             }
         }
 
-        let isSubdirectoryGroup = !isBaseGroup
-        let isKeptByCaller = !allSourceFiles.isEmpty || project.options.generateEmptyDirectories
         let group = getGroup(
             path: path,
             mergingChildren: groupChildren,
             createIntermediateGroups: createIntermediateGroups,
             hasCustomParent: hasCustomParent,
-            isBaseGroup: isBaseGroup,
-            willBeMergedIntoParent: isSubdirectoryGroup && isKeptByCaller
+            isBaseGroup: isBaseGroup
         )
         if createIntermediateGroups {
             createIntermediaGroups(for: group, at: path)
