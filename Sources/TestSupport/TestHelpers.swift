@@ -22,6 +22,30 @@ public func unwrap<T>(_ value: T?, file: String = #file, line: Int = #line) thro
     }
 }
 
+/// Asserts that every file element is a child of at most one group.
+/// Xcode refuses to open a project that breaks this, and the JSON project format cannot represent it.
+public func expectSingleParents(_ pbxProj: PBXProj, function: String = #function, file: String = #file, line: Int = #line) throws {
+    var parentsByElement: [ObjectIdentifier: (element: PBXFileElement, groups: [String])] = [:]
+    let allGroups: [PBXGroup] = pbxProj.groups + pbxProj.variantGroups + pbxProj.versionGroups
+    for group in allGroups {
+        for child in group.children {
+            parentsByElement[ObjectIdentifier(child), default: (child, [])].groups.append(group.label)
+        }
+    }
+    let duplicates = parentsByElement.values.filter { $0.groups.count > 1 }
+    if !duplicates.isEmpty {
+        let description = duplicates
+            .map { "\($0.element.label.quoted) is a child of \($0.groups.map(\.quoted).joined(separator: " and "))" }
+            .sorted()
+            .joined(separator: "\n")
+        throw failure("Elements with more than one parent group:\n\(description)", function: function, file: file, line: line)
+    }
+}
+
+private extension PBXFileElement {
+    var label: String { name ?? path ?? "" }
+}
+
 public func expectError<T: Error>(_ expectedError: T, function: String = #function, file: String = #file, line: Int = #line, _ closure: () throws -> Void) throws where T: CustomStringConvertible {
     do {
         try closure()

@@ -84,24 +84,6 @@ class SourceGeneratorTests: XCTestCase {
                 try pbxProj.expectFile(paths: ["Sources", "A", "C2.0", "c.swift"], buildPhase: .sources)
             }
 
-            /// Every file element must be a child of at most one group; Xcode 27.2 refuses to open projects that violate this.
-            func expectSingleParents(_ pbxProj: PBXProj) throws {
-                var parents: [ObjectIdentifier: (element: PBXFileElement, groups: [String])] = [:]
-                let allGroups: [PBXGroup] = pbxProj.groups + pbxProj.variantGroups
-                for group in allGroups {
-                    for child in group.children {
-                        parents[ObjectIdentifier(child), default: (child, [])].groups.append(group.nameOrPath)
-                    }
-                }
-                let duplicates = parents.values.filter { $0.groups.count > 1 }
-                if !duplicates.isEmpty {
-                    let description = duplicates
-                        .map { "\($0.element.nameOrPath.quoted) is a child of \($0.groups.map(\.quoted).joined(separator: " and "))" }
-                        .joined(separator: "\n")
-                    throw failure("Elements with more than one parent group:\n\(description)\n\(pbxProj.printGroups())")
-                }
-            }
-
             $0.it("generates a single parent for groups when a source is the base path") {
                 let directories = """
                 Module:
