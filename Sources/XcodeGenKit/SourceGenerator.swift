@@ -686,14 +686,15 @@ class SourceGenerator {
             }
         }
 
+        let isSubdirectoryGroup = !isBaseGroup
+        let isKeptByCaller = !allSourceFiles.isEmpty || project.options.generateEmptyDirectories
         let group = getGroup(
             path: path,
             mergingChildren: groupChildren,
             createIntermediateGroups: createIntermediateGroups,
             hasCustomParent: hasCustomParent,
             isBaseGroup: isBaseGroup,
-            // Subdirectory groups are merged into their parent directory's group by the caller.
-            willBeMergedIntoParent: !isBaseGroup
+            willBeMergedIntoParent: isSubdirectoryGroup && isKeptByCaller
         )
         if createIntermediateGroups {
             createIntermediaGroups(for: group, at: path)

@@ -154,6 +154,31 @@ class SourceGeneratorTests: XCTestCase {
                 try expect(mainGroupChildren.contains("Sources/Pages")) == false
             }
 
+            $0.it("keeps a subdirectory reachable when the base source excludes it and another source adds it") {
+                let directories = """
+                Module:
+                  - Resources:
+                    - a.json
+                  - b.swift
+                """
+                try createDirectories(directories)
+
+                // The first source walks into Resources but excludes everything in it, so the group it creates
+                // is not attached to the module group. The second source then adds files to that same group.
+                let target = Target(name: "Module", type: .framework, platform: .iOS, sources: [
+                    TargetSource(path: "../Module", excludes: ["Resources/**"]),
+                    TargetSource(path: "Resources", buildPhase: .resources),
+                ])
+                let project = Project(basePath: directoryPath + "Module", name: "Module", targets: [target])
+
+                let generator = PBXProjGenerator(project: project, projectDirectory: directoryPath)
+                let pbxProj = try generator.generate()
+
+                try pbxProj.expectFile(paths: ["Module", "b.swift"], buildPhase: .sources)
+                try pbxProj.expectFile(paths: ["Module/Resources", "a.json"], names: ["Resources", "a.json"], buildPhase: .resources)
+                try expectSingleParents(pbxProj)
+            }
+
             $0.it("generates synced folder") {
                 let directories = """
                 Sources:
