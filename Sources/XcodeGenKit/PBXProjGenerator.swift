@@ -1221,6 +1221,8 @@ public class PBXProjGenerator {
 
         if !copyBundlesReferences.isEmpty {
             let copyBundlesPhase = addObject(PBXCopyFilesBuildPhase(
+                // Xcode always writes a destination path; the JSON project format cannot be produced without one.
+                dstPath: "",
                 dstSubfolderSpec: .resources,
                 name: "Copy Bundle Resources",
                 files: copyBundlesReferences
