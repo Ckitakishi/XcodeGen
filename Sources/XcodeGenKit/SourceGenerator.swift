@@ -332,8 +332,19 @@ class SourceGenerator {
 
     /// Create a group or return an existing one at the path.
     /// Any merged children are added to a new group or merged into an existing one.
-    private func getGroup(path: Path, name: String? = nil, mergingChildren children: [PBXFileElement], createIntermediateGroups: Bool, hasCustomParent: Bool, isBaseGroup: Bool) -> PBXGroup {
+    private func getGroup(
+        path: Path,
+        name: String? = nil,
+        mergingChildren children: [PBXFileElement],
+        createIntermediateGroups: Bool,
+        hasCustomParent: Bool,
+        isBaseGroup: Bool,
+        willBeMergedIntoParent: Bool = false
+    ) -> PBXGroup {
         let groupReference: PBXGroup
+
+        // A file element can only have a single parent group. Anything that becomes a child here must leave the top level.
+        removeFromRootGroups(children)
 
         if let cachedGroup = groupsByPath[path] {
             var cachedGroupChildren = cachedGroup.children
@@ -360,7 +371,7 @@ class SourceGenerator {
             let isRootPath = (isBaseGroup && isOutOfBasePath && isParentOfBasePath) || path.parent() == project.basePath
 
             // is a top level group in the project
-            let isTopLevelGroup = !hasCustomParent && ((isBaseGroup && !createIntermediateGroups) || isRootPath || isParentOfBasePath)
+            let isTopLevelGroup = !hasCustomParent && !willBeMergedIntoParent && ((isBaseGroup && !createIntermediateGroups) || isRootPath || isParentOfBasePath)
 
             let groupName = name ?? path.lastComponent
 
@@ -380,6 +391,21 @@ class SourceGenerator {
             }
         }
         return groupReference
+    }
+
+    /// Removes elements that are about to become children of a group from the top level.
+    /// A top level group's path is relative to the project, so it is rewritten to be relative to its new parent,
+    /// which is always the directory that directly contains it.
+    private func removeFromRootGroups(_ children: [PBXFileElement]) {
+        for child in children where rootGroups.contains(child) {
+            rootGroups.remove(child)
+            guard child is PBXGroup, child.sourceTree == .group, let childPath = child.path else { continue }
+            let relativePath = Path(childPath).lastComponent
+            child.path = relativePath
+            if child.name == relativePath {
+                child.name = nil
+            }
+        }
     }
 
     /// Creates a variant group or returns an existing one at the path
@@ -665,7 +691,9 @@ class SourceGenerator {
             mergingChildren: groupChildren,
             createIntermediateGroups: createIntermediateGroups,
             hasCustomParent: hasCustomParent,
-            isBaseGroup: isBaseGroup
+            isBaseGroup: isBaseGroup,
+            // Subdirectory groups are merged into their parent directory's group by the caller.
+            willBeMergedIntoParent: !isBaseGroup
         )
         if createIntermediateGroups {
             createIntermediaGroups(for: group, at: path)
